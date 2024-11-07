@@ -316,7 +316,7 @@ document.addEventListener('DOMContentLoaded', function() {
   sharingPoints.forEach(point => {
     const icon = point.type === "bike" ? "🚲" : "🛴";
     L.marker([point.lat, point.lng])
-      .bindPopup(${icon} Disponíveis: ${point.available})
+      .bindPopup(`${icon} Disponíveis: ${point.available}`)
       .addTo(map);
   });
 
@@ -362,12 +362,7 @@ document.addEventListener('DOMContentLoaded', function() {
   async function searchLocation(searchQuery) {
     try {
       const query = encodeURIComponent(searchQuery + ' São Leopoldo Rio Grande do Sul');
-      const response = await fetch(https://nominatim.openstreetmap.org/search?format=json&q=${query});
-      
-      if (!response.ok) {
-        throw new Error('Network response was not ok');
-      }
-      
+      const response = await fetch(`https://nominatim.openstreetmap.org/search?format=json&q=${query}`);
       const data = await response.json();
 
       if (data && data.length > 0) {
@@ -375,20 +370,16 @@ document.addEventListener('DOMContentLoaded', function() {
         const lat = parseFloat(location.lat);
         const lon = parseFloat(location.lon);
 
-        if (!isNaN(lat) && !isNaN(lon)) {
-          if (window.searchMarker) {
-            map.removeLayer(window.searchMarker);
-          }
+        if (window.searchMarker) {
+          map.removeLayer(window.searchMarker);
+        }
 
-          window.searchMarker = L.marker([lat, lon]).addTo(map);
-          window.searchMarker.bindPopup(location.display_name).openPopup();
-          map.setView([lat, lon], 15);
+        window.searchMarker = L.marker([lat, lon]).addTo(map);
+        window.searchMarker.bindPopup(location.display_name).openPopup();
+        map.setView([lat, lon], 15);
 
-          // Store the current location as origin point
-          window.originPoint = [lat, lon];
-        } else {
-          console.error('Invalid coordinates received');
-          alert('Coordenadas inválidas recebidas do servidor.');
+        if (window.originPoint) {
+          calculateRoute(window.originPoint, [lat, lon]);
         }
       } else {
         alert('Local não encontrado. Por favor, tente novamente.');
@@ -400,29 +391,19 @@ document.addEventListener('DOMContentLoaded', function() {
   }
 
   function calculateRoute(from, to) {
-    // Only calculate route if both points exist
-    if (!from || !to) {
-      console.warn('Missing origin or destination points for route calculation');
-      return;
+    if (window.currentRoute) {
+      map.removeLayer(window.currentRoute);
     }
 
-    try {
-      if (window.currentRoute) {
-        map.removeLayer(window.currentRoute);
-      }
+    window.currentRoute = L.polyline([from, to], {
+      color: 'blue',
+      weight: 4,
+      opacity: 0.7
+    }).addTo(map);
 
-      window.currentRoute = L.polyline([from, to], {
-        color: 'blue',
-        weight: 4,
-        opacity: 0.7
-      }).addTo(map);
-
-      map.fitBounds(window.currentRoute.getBounds(), {
-        padding: [50, 50]
-      });
-    } catch (error) {
-      console.error('Error calculating route:', error);
-    }
+    map.fitBounds(window.currentRoute.getBounds(), {
+      padding: [50, 50]
+    });
   }
 
   const modeSwitch = document.querySelector('.mode-switch');
@@ -444,17 +425,14 @@ document.addEventListener('DOMContentLoaded', function() {
   let points = 150;
   function updatePoints(value) {
     points += value;
-    document.querySelector('.points-display').textContent = 🌟 Pontos: ${points};
+    document.querySelector('.points-display').textContent = `🌟 Pontos: ${points}`;
   }
 
   document.querySelectorAll('.mode-button').forEach(button => {
     button.addEventListener('click', () => {
       document.querySelectorAll('.mode-button').forEach(b => b.classList.remove('active'));
       button.classList.add('active');
-      // Only calculate route if we have an origin point
-      if (window.originPoint) {
-        calculateRoute(window.originPoint, window.searchMarker ? window.searchMarker.getLatLng() : null);
-      }
+      calculateRoute(searchBox.value);
     });
   });
 });
