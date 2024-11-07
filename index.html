@@ -1,0 +1,463 @@
+<html><head><base href="." />
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>MobiUrbana - Sistema Inteligente de Mobilidade - São Leopoldo</title>
+<script src="https://unpkg.com/leaflet@1.7.1/dist/leaflet.js"></script>
+<link href="https://unpkg.com/leaflet@1.7.1/dist/leaflet.css" rel="stylesheet">
+<style>
+:root {
+  --primary: #2C5282;
+  --secondary: #48BB78;
+  --background: #F7FAFC;
+  --text: #2D3748;
+}
+
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+  font-family: 'Segoe UI', system-ui, sans-serif;
+}
+
+body {
+  background: var(--background);
+  color: var(--text);
+}
+
+.container {
+  max-width: 1200px;
+  margin: 0 auto;
+  padding: 1rem;
+}
+
+nav {
+  background: var(--primary);
+  color: white;
+  padding: 1rem 0;
+  box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+}
+
+.nav-content {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.logo {
+  font-size: 1.5rem;
+  font-weight: bold;
+}
+
+.search-box {
+  background: white;
+  padding: 0.5rem;
+  border-radius: 8px;
+  width: 100%;
+  max-width: 400px;
+  margin: 1rem 0;
+}
+
+#map {
+  height: 400px;
+  border-radius: 8px;
+  margin: 1rem 0;
+  box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+}
+
+.transport-options {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+  gap: 1rem;
+  margin: 1rem 0;
+}
+
+.transport-card {
+  background: white;
+  padding: 1rem;
+  border-radius: 8px;
+  box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+}
+
+.transport-icon {
+  width: 40px;
+  height: 40px;
+  margin-bottom: 0.5rem;
+}
+
+.real-time-updates {
+  background: white;
+  padding: 1rem;
+  border-radius: 8px;
+  margin: 1rem 0;
+  box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+}
+
+.pulse {
+  animation: pulse 2s infinite;
+}
+
+@keyframes pulse {
+  0% {
+    transform: scale(1);
+  }
+  50% {
+    transform: scale(1.05);
+  }
+  100% {
+    transform: scale(1);
+  }
+}
+
+.mode-switch {
+  position: fixed;
+  top: 1rem;
+  right: 1rem;
+  background: var(--primary);
+  color: white;
+  padding: 0.5rem;
+  border-radius: 50%;
+  cursor: pointer;
+  z-index: 1000;
+}
+
+.multimodal-options {
+  display: flex;
+  gap: 0.5rem;
+  margin-bottom: 1rem;
+}
+
+.mode-button {
+  padding: 0.5rem 1rem;
+  border: none;
+  border-radius: 4px;
+  background: var(--primary);
+  color: white;
+  cursor: pointer;
+}
+
+.mode-button.active {
+  background: var(--secondary);
+}
+
+.alerts-panel {
+  position: fixed;
+  bottom: 1rem;
+  right: 1rem;
+  background: white;
+  padding: 1rem;
+  border-radius: 8px;
+  box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+  max-width: 300px;
+  z-index: 1000;
+  transition: transform 0.3s ease;
+}
+
+.alerts-panel.hidden {
+  transform: translateX(calc(100% + 1rem));
+}
+
+.toggle-alerts {
+  position: fixed;
+  bottom: 1rem;
+  right: 1rem;
+  background: var(--primary);
+  color: white;
+  padding: 0.5rem 1rem;
+  border: none;
+  border-radius: 8px;
+  cursor: pointer;
+  z-index: 1001;
+  font-size: 1rem;
+}
+
+.toggle-alerts:hover {
+  background: var(--secondary);
+}
+
+body.dark-mode {
+  background: #1A202C;
+  color: #EDF2F7;
+}
+
+body.dark-mode .transport-card,
+body.dark-mode .real-time-updates,
+body.dark-mode .alerts-panel {
+  background: #2D3748;
+  color: #EDF2F7;
+}
+
+body.dark-mode .toggle-alerts {
+  background: #4A5568;
+}
+
+.points-display {
+  background: var(--secondary);
+  color: white;
+  padding: 0.5rem;
+  border-radius: 4px;
+  position: fixed;
+  top: 1rem;
+  left: 1rem;
+  z-index: 1000;
+}
+</style>
+</head>
+<body>
+  <nav>
+    <div class="container nav-content">
+      <div class="logo">MobiUrbana - São Leopoldo</div>
+      <div>
+        <svg class="transport-icon" viewBox="0 0 24 24" fill="white">
+          <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm0 18c-4.41 0-8-3.59-8-8s3.59-8 8-8 8 3.59 8 8-3.59 8-8 8z"/>
+        </svg>
+      </div>
+    </div>
+  </nav>
+
+  <main class="container">
+    <input type="text" class="search-box" placeholder="Para onde você quer ir em São Leopoldo?">
+    
+    <div id="map"></div>
+
+    <div class="transport-options">
+      <div class="transport-card">
+        <svg class="transport-icon" viewBox="0 0 24 24" fill="var(--primary)">
+          <path d="M4 16c0 1.1.9 2 2 2h12c1.1 0 2-.9 2-2V6c0-1.1-.9-2-2-2H6c-1.1 0-2 .9-2 2v10zm2-10h12v10H6V6zm3 7h6v-2H9v2z"/>
+        </svg>
+        <h3>Ônibus</h3>
+        <p>Próximo ônibus em 5 min</p>
+      </div>
+
+      <div class="transport-card">
+        <svg class="transport-icon" viewBox="0 0 24 24" fill="var(--secondary)">
+          <path d="M15.5 5.5c1.1 0 2-.9 2-2s-.9-2-2-2-2 .9-2 2 .9 2 2 2zM5 12c-2.8 0-5 2.2-5 5s2.2 5 5 5 5-2.2 5-5-2.2-5-5-5zm0 8.5c-1.9 0-3.5-1.6-3.5-3.5s1.6-3.5 3.5-3.5 3.5 1.6 3.5 3.5-1.6 3.5-3.5 3.5z"/>
+        </svg>
+        <h3>Bicicleta</h3>
+        <p>5 bikes disponíveis próximo</p>
+      </div>
+
+      <div class="transport-card">
+        <svg class="transport-icon" viewBox="0 0 24 24" fill="var(--text)">
+          <path d="M13.5 5.5c1.1 0 2-.9 2-2s-.9-2-2-2-2 .9-2 2 .9 2 2 2zM9.8 8.9L7 23h2.1l1.8-8 2.1 2v6h2v-7.5l-2.1-2 .6-3C14.8 12 16.8 13 19 13v-2c-1.9 0-3.5-1-4.3-2.4l-1-1.6c-.4-.6-1-1-1.7-1-.3 0-.5.1-.8.1L6 8.3V13h2V9.6l1.8-.7"/>
+        </svg>
+        <h3>A pé</h3>
+        <p>15 min até seu destino</p>
+      </div>
+    </div>
+
+    <div class="real-time-updates pulse">
+      <h3>Alertas em Tempo Real - São Leopoldo</h3>
+      <p>⚠️ Movimento intenso na Av. João Corrêa</p>
+      <p>🚌 Linha Unisinos com previsão de 5 min</p>
+    </div>
+
+    <div class="multimodal-options">
+      <button class="mode-button active">🚌 Ônibus</button>
+      <button class="mode-button">🚲 Bicicleta</button>
+      <button class="mode-button">🛴 Patinete</button>
+      <button class="mode-button">🚶 A pé</button>
+    </div>
+
+    <button class="mode-switch">🌙</button>
+    
+    <div class="points-display">
+      🌟 Pontos: 150
+    </div>
+
+    <button class="toggle-alerts">🔔 Alertas</button>
+    
+    <div class="alerts-panel">
+      <h4>⚠️ Alertas de Segurança</h4>
+      <p>Área com pouca iluminação: Evite rota pela Av. Independência após 22h</p>
+      <h4>🌧️ Risco de Alagamento</h4>
+      <p>Atenção na região do Centro - Rota alternativa sugerida</p>
+    </div>
+  </main>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+  const map = L.map('map').setView([-29.7628, -51.1475], 13);
+
+  L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+    attribution: '© OpenStreetMap contributors'
+  }).addTo(map);
+
+  const locations = [
+    {lat: -29.7628, lng: -51.1475, name: "Centro de São Leopoldo"},
+    {lat: -29.7947, lng: -51.1509, name: "Unisinos"},
+    {lat: -29.7589, lng: -51.1477, name: "Estação São Leopoldo Trensurb"},
+    {lat: -29.7605, lng: -51.1449, name: "Shopping Bourbon"},
+    {lat: -29.7666, lng: -51.1416, name: "Hospital Centenário"}
+  ];
+
+  locations.forEach(location => {
+    L.marker([location.lat, location.lng])
+      .bindPopup(location.name)
+      .addTo(map);
+  });
+
+  const riskAreas = [
+    {lat: -29.7628, lng: -51.1475, radius: 200, type: "flood"},
+    {lat: -29.7589, lng: -51.1477, radius: 150, type: "security"}
+  ];
+
+  riskAreas.forEach(area => {
+    L.circle([area.lat, area.lng], {
+      radius: area.radius,
+      className: 'risk-area'
+    }).addTo(map);
+  });
+
+  const sharingPoints = [
+    {lat: -29.7628, lng: -51.1475, type: "bike", available: 5},
+    {lat: -29.7589, lng: -51.1477, type: "scooter", available: 3}
+  ];
+
+  sharingPoints.forEach(point => {
+    const icon = point.type === "bike" ? "🚲" : "🛴";
+    L.marker([point.lat, point.lng])
+      .bindPopup(${icon} Disponíveis: ${point.available})
+      .addTo(map);
+  });
+
+  setInterval(() => {
+    const updates = document.querySelector('.real-time-updates');
+    updates.innerHTML = `
+      <h3>Alertas em Tempo Real - São Leopoldo</h3>
+      <p>⚠️ ${getRandomAlert()}</p>
+      <p>🚌 ${getRandomBusUpdate()}</p>
+    `;
+  }, 10000);
+
+  function getRandomAlert() {
+    const alerts = [
+      "Movimento intenso na Av. João Corrêa - Utilize rotas alternativas",
+      "Obras na Av. Unisinos - Desvio necessário",
+      "Evento no centro - Tráfego intenso próximo à Prefeitura",
+      "Manutenção na via do Trensurb - Possíveis atrasos",
+      "Congestionamento próximo ao Shopping Bourbon"
+    ];
+    return alerts[Math.floor(Math.random() * alerts.length)];
+  }
+
+  function getRandomBusUpdate() {
+    const updates = [
+      "Linha Unisinos com previsão de 5 min",
+      "Linha Centro-Feitoria chegando em 3 minutos",
+      "Linha Campina operando normalmente",
+      "Linha Santos Dumont com alteração de itinerário",
+      "Linha Scharlau com atraso de 10 min"
+    ];
+    return updates[Math.floor(Math.random() * updates.length)];
+  }
+
+  const searchBox = document.querySelector('.search-box');
+  searchBox.addEventListener('keypress', async function(e) {
+    if (e.key === 'Enter') {
+      const destination = this.value;
+      await searchLocation(destination);
+    }
+  });
+
+  async function searchLocation(searchQuery) {
+    try {
+      const query = encodeURIComponent(searchQuery + ' São Leopoldo Rio Grande do Sul');
+      const response = await fetch(https://nominatim.openstreetmap.org/search?format=json&q=${query});
+      
+      if (!response.ok) {
+        throw new Error('Network response was not ok');
+      }
+      
+      const data = await response.json();
+
+      if (data && data.length > 0) {
+        const location = data[0];
+        const lat = parseFloat(location.lat);
+        const lon = parseFloat(location.lon);
+
+        if (!isNaN(lat) && !isNaN(lon)) {
+          if (window.searchMarker) {
+            map.removeLayer(window.searchMarker);
+          }
+
+          window.searchMarker = L.marker([lat, lon]).addTo(map);
+          window.searchMarker.bindPopup(location.display_name).openPopup();
+          map.setView([lat, lon], 15);
+
+          // Store the current location as origin point
+          window.originPoint = [lat, lon];
+        } else {
+          console.error('Invalid coordinates received');
+          alert('Coordenadas inválidas recebidas do servidor.');
+        }
+      } else {
+        alert('Local não encontrado. Por favor, tente novamente.');
+      }
+    } catch (error) {
+      console.error('Erro na pesquisa:', error);
+      alert('Erro ao pesquisar local. Por favor, tente novamente.');
+    }
+  }
+
+  function calculateRoute(from, to) {
+    // Only calculate route if both points exist
+    if (!from || !to) {
+      console.warn('Missing origin or destination points for route calculation');
+      return;
+    }
+
+    try {
+      if (window.currentRoute) {
+        map.removeLayer(window.currentRoute);
+      }
+
+      window.currentRoute = L.polyline([from, to], {
+        color: 'blue',
+        weight: 4,
+        opacity: 0.7
+      }).addTo(map);
+
+      map.fitBounds(window.currentRoute.getBounds(), {
+        padding: [50, 50]
+      });
+    } catch (error) {
+      console.error('Error calculating route:', error);
+    }
+  }
+
+  const modeSwitch = document.querySelector('.mode-switch');
+  modeSwitch.addEventListener('click', () => {
+    document.body.classList.toggle('dark-mode');
+    modeSwitch.textContent = document.body.classList.contains('dark-mode') ? '☀️' : '🌙';
+  });
+
+  const toggleAlerts = document.querySelector('.toggle-alerts');
+  const alertsPanel = document.querySelector('.alerts-panel');
+  let alertsVisible = true;
+
+  toggleAlerts.addEventListener('click', () => {
+    alertsVisible = !alertsVisible;
+    alertsPanel.classList.toggle('hidden');
+    toggleAlerts.textContent = alertsVisible ? '🔔 Alertas' : '🔕 Alertas';
+  });
+
+  let points = 150;
+  function updatePoints(value) {
+    points += value;
+    document.querySelector('.points-display').textContent = 🌟 Pontos: ${points};
+  }
+
+  document.querySelectorAll('.mode-button').forEach(button => {
+    button.addEventListener('click', () => {
+      document.querySelectorAll('.mode-button').forEach(b => b.classList.remove('active'));
+      button.classList.add('active');
+      // Only calculate route if we have an origin point
+      if (window.originPoint) {
+        calculateRoute(window.originPoint, window.searchMarker ? window.searchMarker.getLatLng() : null);
+      }
+    });
+  });
+});
+</script>
+</body>
+</html>
